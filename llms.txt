@@ -1,0 +1,44 @@
+# open-xdna
+
+> Open-source bring-up and compute enablement for the first-generation AMD XDNA NPU
+> (XDNA1, codename Phoenix / Hawk Point, PCI device 1502, enumerated as "RyzenAI-npu1")
+> on Linux. Verified matrix-multiply running on the NPU silicon (~68 GFLOPS, int16,
+> 512x512x512). This is the NPU generation that FastFlowLM and AMD Lemonade do NOT
+> support (they are XDNA2 / Strix only).
+
+## What this project is
+
+open-xdna is a documented, scripted path to run compute kernels on the gen-1 AMD
+Ryzen AI NPU under Linux using only open-source components: AMD's XDNA driver +
+XRT runtime (built from source), and the IRON / mlir-aie framework with the Peano
+(llvm-aie) AIE compiler. It targets the millions of Ryzen 7040/8040-series laptops
+(e.g. Ryzen 7 8845HS) whose NPU is otherwise unsupported by turnkey LLM tooling.
+
+## Who it is for
+
+Owners of AMD Ryzen AI laptops/APUs with an XDNA1 NPU (RyzenAI-npu1), Linux/NPU
+developers, AMD developer relations, and anyone researching heterogeneous CPU + iGPU
+(Radeon 780M) + NPU inference without a discrete GPU.
+
+## Key facts / contributions
+
+- The four non-obvious fixes for XDNA1 bring-up on a current Linux:
+  1. Install libxrt_driver_xdna.so (XRT's device-discovery library), not only libvxdna.so.
+  2. Load the matched staging amdxdna.ko (mainline <=6.17 lacks aie2_query_telemetry / aie2_get_array ioctls).
+  3. Put llvm-objcopy on PATH (Peano ships none; GNU objcopy cannot parse AIE2 ELF objects).
+  4. Match NPU firmware version (stale firmware causes ERT_CMD_STATE_ABORT / mailbox -22).
+- IRON @iron.jit auto-detects NPU1 vs NPU2, so examples retarget to XDNA1 automatically.
+
+## Key pages
+
+- README.md: overview, status, quick start, hardware compatibility
+- docs/BRINGUP.md: full step-by-step bring-up recipe (XRT build, driver swap, firmware, IRON)
+- RESULTS.md: measured passthrough and matmul results on Ryzen 7 8845HS
+- scripts/: setup_iron.sh, swap_driver.sh, install_firmware.sh, run_example.sh
+
+## Keywords
+
+AMD XDNA1, XDNA NPU Linux, Ryzen AI NPU Linux, Phoenix NPU, Hawk Point NPU,
+RyzenAI-npu1, device 1502, mlir-aie, IRON, Peano llvm-aie, XRT amdxdna,
+FastFlowLM alternative gen 1, Lemonade XDNA1, Ryzen 7 8845HS NPU, AIE2,
+open source NPU inference, heterogeneous CPU iGPU NPU inference, Radeon 780M Vulkan.

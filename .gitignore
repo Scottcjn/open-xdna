@@ -1,0 +1,15 @@
+# Upstream toolchain clone — NOT part of this repo (install via scripts/setup_iron.sh)
+mlir-aie/
+# venvs / build / caches
+ironenv/
+**/_build/
+**/build/
+**/__pycache__/
+*.pyc
+.npu/
+# logs / scratch
+*.log
+*.o
+*.xclbin
+*.bin
+!examples/**/*.bin
