@@ -26,7 +26,7 @@ Header: `#include <aie_api/aie.hpp>`. Vectors: `aie::vector<T, N>` (e.g. `aie::v
 | `vec_cmpeq` | `aie::eq(a, b)` → `aie::mask<N>` | |
 | `vec_sel(a, b, mask)` | ✅ `aie::select(a, b, mask)` | `mask ? b : a` — the prune/keep |
 | `vec_and` / `vec_or` / `vec_xor` | `aie::bit_and / bit_or / bit_xor` | bitwise |
-| `vec_perm` | `aie::shuffle(v, pattern)` / `aie::shuffle(a, b, mode)` | **the non-bijunctive collapse core** — gather/permute lanes |
+| `vec_perm` (runtime control vec) | ⚠️ **no direct equivalent** — `aie::shuffle` is *structured-only* (rotate/interleave), not arbitrary runtime gather. See ISA finding below. |
 | `vec_sld` / shifts | `aie::shuffle_up / shuffle_down` | lane shift |
 | (horizontal sum) | `aie::reduce_add(v)` | tree reduction → scalar |
 | (horizontal max/min) | `aie::reduce_max(v)` / `aie::reduce_min(v)` | scalar reduction (see `reduce_max.cc`) |
@@ -50,9 +50,10 @@ auto out   = aie::select(aie::zeros<bfloat16,32>(), x, keep); // vec_sel: keep?x
 aie::store_v(c+i, out);                          // vec_st
 ```
 
-**Top-k cutoff (the vec_perm part):** `aie::reduce_max` for the peak, then `aie::shuffle`
-to gather survivors into a dense prefix — the AIE analogue of the AltiVec `vec_perm`
-prune+compact that drives `pse-vcipher-collapse`.
+**Top-k cutoff:** `aie::reduce_max` for the peak (vectorized), threshold to a mask
+(vectorized). The dense *pack* of survivors, however, is **not** a `vec_perm` on AIE —
+there's no runtime-indexed gather (see ISA finding below), so the pack runs on the scalar
+unit. Peak + threshold vectorize; placement does not.
 
 ## Gotchas vs AltiVec
 
