@@ -228,8 +228,9 @@ built and timed. The 3× lived only in the spreadsheet.
   building block proven.
 - ✅ `npu_collapse_xtile.py` — **cross-tile reduce** lifts the N≤4096 cap: per-tile `reduce_max`
   on the NPU → combine partials → tiled collapse over the full vector (verified N=16384).
-- 🚧 Full top-k **stream compaction** (dense survivor pack) = prefix-sum + scatter, the hard
-  SIMD frontier; building blocks (mask, select, shuffle) all proven, the pack algorithm is next.
+- ✅ `compact.cc` — **full stream compaction**: survivors (x≥τ) packed dense at the front,
+  tail zeroed (scalar-unit scan+gather; verified N=4096). The pack that shrinks downstream work.
+  Vectorized form (prefix-sum + `aie::shuffle` runtime gather) is the perf optimization.
 
 ### Remaining build (to ship the net-win claim)
 Wire the fused collapse + compaction into a real FFN/attention path; **measure** the gather;
