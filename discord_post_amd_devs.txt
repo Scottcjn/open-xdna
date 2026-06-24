@@ -1,0 +1,13 @@
+**open-xdna — first-gen XDNA1 NPU on Linux, 100% open-source** 🔓
+
+Got the Phoenix/Hawk Point **XDNA1** NPU (the gen-1 part FastFlowLM/Lemonade skip — they're XDNA2-only) running end-to-end on Linux with a fully open stack: XRT + amd/xdna-driver + IRON/mlir-aie + Peano, on Ubuntu 25.10 / kernel 6.17, Ryzen 7 8845HS.
+
+All measured on real silicon:
+• Bring-up guide + the 4 fixes that unblocked it (driver / firmware / objcopy / ioctls)
+• Hand-authored AIE kernels — matmul ~68 GFLOP/s (int16→int32), plus a non-bijunctive collapse/prune suite
+• A vision conv pipeline running on the NPU (its native CNN strength)
+• Heterogeneous CPU + Radeon 780M + NPU LLM benchmarks — a clear device-specialization law (decode→iGPU, prefill→CPU, prune→NPU), honest negatives included
+
+Also filed upstream from the bring-up: issue #1447 (in-tree amdxdna missing GET_ARRAY/telemetry ioctls) + docs PR #1448.
+
+Would love feedback from anyone running XDNA1 on Linux 👉 https://github.com/Scottcjn/open-xdna

@@ -79,3 +79,16 @@ size — the win is **offload + ~6.6 W + concurrency** (vision on NPU while CPU/
 prunable fraction is large (big FFN, long-context KV) *and* importance is skewed. Measure on the
 target model's real dims before claiming a win. We did; the log above shows where it works and
 where it doesn't.
+
+
+## Scope & reproducibility (caveats)
+
+- **Precision:** the ~68 GFLOP/s matmul is **INT16 in → INT32 out** (the AIE2 `single_core` GEMM).
+  Not BF16/FP32 — interpret accordingly. (~16 TOPS is the device's INT8 spec figure.)
+- **Kernel/distro:** measured on **Ubuntu 25.10 / kernel 6.17** (bleeding edge, for the staging
+  driver + GCC15 toolchain). Reproducibility on **LTS kernels (6.8/6.11, Ubuntu 24.04)** is **untested**
+  — the staging-driver ioctls and firmware matching may differ; treat LTS as an open question.
+- **Generation:** this is **XDNA1 (Phoenix/Hawk Point)** only. XDNA2 (Strix Point) users won't
+  directly benefit without porting — the kernels target the aie2 array; tile/ISA details differ.
+- **Maturity:** research/community bring-up, **not a production stack**. Numbers are reproducible
+  via the named scripts on this exact box; vendor-grade validation is out of scope.
