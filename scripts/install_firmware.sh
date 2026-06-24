@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Scott Boudreaux / Elyan Labs. Commercial license: see COMMERCIAL.md
 # open-xdna :: install/match XDNA1 (device 1502) NPU firmware.
 # Stale firmware causes ERT_CMD_STATE_ABORT / mailbox ret -22 on command submission.
 #   sudo bash scripts/install_firmware.sh [version]   (default 1.5.5.391)

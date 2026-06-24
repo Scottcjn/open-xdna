@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Scott Boudreaux / Elyan Labs. Commercial license: see COMMERCIAL.md
 # open-xdna :: run an IRON programming example on the XDNA1 NPU (local JIT compile + run)
 #
 # Usage:  sudo bash scripts/run_example.sh <example-relpath>

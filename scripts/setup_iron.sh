@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Scott Boudreaux / Elyan Labs. Commercial license: see COMMERCIAL.md
 #
 # open-xdna :: IRON / mlir-aie setup (Phase A — the network part)
 # Run this in YOUR shell (it needs internet):   ! bash ~/open-xdna/setup_iron.sh

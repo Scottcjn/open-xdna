@@ -80,4 +80,9 @@ Part of ongoing heterogeneous-compute research (PSE vec_perm collapse, RAM coffe
 
 ## License
 
-MIT (this repo's scripts/docs). AMD's XDNA/XRT/IRON toolchains are Apache-2.0 WITH LLVM-exception and installed separately; no AMD code or firmware is redistributed here.
+**AGPLv3** (this repo's original scripts/docs) — see [`LICENSE`](LICENSE). If you modify
+this or run it as a network service, AGPLv3 §13 requires sharing your corresponding
+source. A **commercial / proprietary license** (no copyleft obligation) is available for
+closed-source or SaaS use — see [`COMMERCIAL.md`](COMMERCIAL.md). AMD's XDNA/XRT and
+IRON/mlir-aie toolchains are licensed separately (Apache-2.0 WITH LLVM-exception) and are
+installed, not redistributed here.

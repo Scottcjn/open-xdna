@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Scott Boudreaux / Elyan Labs. Commercial license: see COMMERCIAL.md
 # open-xdna :: load the matched (staging) amdxdna.ko built from amd/xdna-driver.
 # Fixes mainline's missing aie2_query_telemetry / aie2_get_array ioctls.
 #   sudo bash scripts/swap_driver.sh [path/to/amdxdna.ko]
