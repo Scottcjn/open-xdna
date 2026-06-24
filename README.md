@@ -41,6 +41,7 @@ $ xrt-smi examine
 | 🎯 **Full collapse** (reduce+threshold+compact) in **one** AIE kernel | ✅ |
 | 📈 **Measured FFN net-win** (NPU prune → dense down_proj) | ✅ **1.6× @ cos 0.998** |
 | 🎲 **Attention KV-prune** (NPU evicts low-mass keys) | ✅ **4× @ cos 0.976** |
+| 🖼️ **Vision pipeline** (rgba2gray→3×3 conv→threshold) on the NPU | ✅ **PASS** — the NPU's native CNN strength |
 
 ## 😈 Why this exists
 
@@ -75,6 +76,7 @@ python3 examples/npu_shuffle_demo.py        # aie::reverse (vec_perm) on the NPU
 python3 examples/npu_pse_collapse.py        # FULL collapse (reduce+threshold+compact) in ONE kernel
 python3 examples/npu_ffn_prune.py           # MEASURED FFN net-win + accuracy tradeoff
 python3 examples/npu_attention_prune.py     # MEASURED attention KV-prune (both GEMMs shrink)
+python3 mlir-aie/programming_examples/vision/edge_detect/edge_detect.py -W 512 -H 512  # 2D conv vision pipeline on NPU
 ```
 
 ## 🧬 The flex: you can hand-write AIE kernels like AltiVec
@@ -101,6 +103,10 @@ This is **not** a turnkey LLM server, and the NPU is **not** a fast matmul engin
 ## 🔗 Related work — Elyan Labs
 
 Heterogeneous-compute research (PSE non-bijunctive collapse, RAM coffers / NUMA weight banking, neuromorphic device routing) by [**Elyan Labs**](https://elyanlabs.ai). See also [`ram-coffers`](https://github.com/Scottcjn/ram-coffers) · [`pse-vcipher-collapse`](https://github.com/Scottcjn/pse-vcipher-collapse).
+
+## 🖼️ Multimodal: vision front-end on the NPU
+
+The NPU was built for vision/CNN inference — a multimodal model's image tower (patch-embed convs, preprocessing) is a far better NPU fit than text decode. A full conv pipeline already runs on the NPU; see [`docs/VISION_OFFLOAD.md`](docs/VISION_OFFLOAD.md) for the 4-way split (NPU=vision+prune, 780M=decode, CPU=prefill).
 
 ## 📜 License
 
