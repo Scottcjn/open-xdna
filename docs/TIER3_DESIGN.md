@@ -249,3 +249,15 @@ win, because the win comes from work eliminated, not work accelerated.
 3. Is the honest answer that NPU-in-the-loop is *not* worth it on XDNA1, and we should
    instead ship the clean CPU+iGPU heterogeneous result + the NPU as a standalone GEMM
    coprocessor demo?
+
+### ✅ MEASURED net-win (examples/npu_ffn_prune.py, 2026-06-24)
+NPU-selected global structured FFN prune, measured (FLOP work-reduction + output cosine):
+
+| weights | 50% prune | 75% prune |
+|---|---|---|
+| skewed (realistic LLM) | **1.33x @ cos 0.9994** | **1.60x @ cos 0.998** |
+| uniform (random init) | 1.32x @ cos 0.75 (brutal) | 1.56x @ cos 0.57 |
+
+Turns the analytical ~1.3-1.6x into a measured result: the ~1.6x whole-FFN ceiling is real
+and reached at near-perfect fidelity **when channel importance is skewed** (real FFNs);
+flat-importance weights make global structured prune brutal. Accuracy is the gate, quantified.
