@@ -38,6 +38,7 @@ $ xrt-smi examine
 | 🛠️ **Hand-authored AIE vector kernel** (`aie::ge`+`aie::select`) | ✅ first compile |
 | 🔁 Fused `reduce_max`→dynamic-τ collapse in **one** kernel | ✅ data-adaptive |
 | 🔀 `aie::reverse` (vec_perm / shuffle) on the NPU | ✅ |
+| 🎯 **Full collapse** (reduce+threshold+compact) in **one** AIE kernel | ✅ |
 
 ## 😈 Why this exists
 
@@ -67,6 +68,7 @@ python3 examples/npu_tiny_mlp.py            # a model's matmuls on the NPU
 python3 examples/npu_collapse_fused.py      # fused reduce_max -> dynamic-tau collapse
 python3 examples/npu_collapse_runtime.py    # runtime-tau collapse (on-NPU aie::sub shift)
 python3 examples/npu_shuffle_demo.py        # aie::reverse (vec_perm) on the NPU
+python3 examples/npu_pse_collapse.py        # FULL collapse (reduce+threshold+compact) in ONE kernel
 ```
 
 ## 🧬 The flex: you can hand-write AIE kernels like AltiVec
