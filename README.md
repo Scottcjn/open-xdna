@@ -108,7 +108,7 @@ Heterogeneous-compute research (PSE non-bijunctive collapse, RAM coffers / NUMA 
 
 ## 🖼️ Multimodal: vision front-end on the NPU
 
-The NPU was built for vision/CNN inference — a multimodal model's image tower (patch-embed convs, preprocessing) is a far better NPU fit than text decode. A full conv pipeline already runs on the NPU; see [`docs/VISION_OFFLOAD.md`](docs/VISION_OFFLOAD.md) for the 4-way split (NPU=vision+prune, 780M=decode, CPU=prefill).
+The NPU was built for vision/CNN inference — a multimodal model's image tower (patch-embed convs, preprocessing) is a far better NPU fit than text decode. A full conv pipeline already runs on the NPU; see [`docs/VISION_OFFLOAD.md`](docs/VISION_OFFLOAD.md) for the offload, and [`docs/MULTIMODAL_3WAY.md`](docs/MULTIMODAL_3WAY.md) for the full 3-processor picture (incl gemma4:26b @ 16.5 tok/s on the 780M via 96 GB — a 17 GB model the 8 GB discrete can't hold).
 
 ## 📜 License
 
