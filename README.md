@@ -55,6 +55,8 @@ Getting a kernel onto an XDNA1 NPU on a current Linux needs four non-obvious mov
 3. **Put `llvm-objcopy` on `PATH`** — GNU objcopy can't parse the AIE2 ELF.
 4. **Match the NPU firmware** — stale firmware aborts commands (`ERT_CMD_STATE_ABORT`).
 
+> Upstream gap writeup: [`docs/UPSTREAM_amdxdna_ioctls.md`](docs/UPSTREAM_amdxdna_ioctls.md) — mainline `amdxdna` (≤6.17) is missing the `GET_ARRAY`/telemetry ioctls the current XRT SHIM expects (why fix #2 is needed).
+
 ## 🚀 Quick start
 
 ```bash
