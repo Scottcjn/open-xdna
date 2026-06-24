@@ -6,6 +6,7 @@
 
 **The first-generation XDNA1 NPU — "Phoenix" / "Hawk Point" — in millions of Ryzen laptops, brought up on Linux with 100% open source. Models running on the silicon. Custom vector kernels hand-authored in the AIE ISA.**
 
+[![BCOS Certified](https://img.shields.io/badge/BCOS-Certified-brightgreen?style=flat)](BCOS.md)
 ![License](https://img.shields.io/badge/license-AGPLv3%20%2B%20commercial-blue)
 ![NPU](https://img.shields.io/badge/NPU-XDNA1%20Phoenix%20%C2%B7%20RyzenAI--npu1-red)
 ![Status](https://img.shields.io/badge/gen--1%20NPU-running%20on%20Linux-brightgreen)
