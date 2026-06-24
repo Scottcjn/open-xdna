@@ -130,3 +130,19 @@ segmentation is the next milestone (needs a seg model on the NPU).
 effect → **v4l2loopback virtual cam** (`/dev/video10`, "NPU Camera (open-xdna)"), selectable in any
 app. Measured: NPU effect adds ~2 ms/frame; end-to-end is camera-capture-bound (~15 FPS on this USB
 webcam), never NPU-bound.
+
+
+## Prefill→CPU finding — scrutinized (POIZONE review + Grok + on-silicon re-test, 2026-06-24)
+
+A reviewer (POIZONE) flagged the CPU>780M prefill result as surprising. We re-tested and ran it
+through an independent model (Grok). Findings:
+- **Re-test (7B Q4_K, pp512):** sweeping `ubatch` 256→1024→2048 left the 780M flat at **~300 t/s**;
+  longer prefill (pp1024) also ~295 t/s; CPU ~800 t/s. So the gap is **robust — NOT an under-tuned
+  batch-size knob.**
+- **Grok's independent verdict:** the gap most likely reflects the **immaturity of the Mesa/RADV
+  Vulkan Q4_K/Q3_K GEMM kernels** (tiling/register-blocking/quantized paths) vs llama.cpp's
+  hand-tuned AVX-512 CPU GEMM — **not** the 780M's hardware ceiling.
+- **Honest claim:** *on the llama.cpp Vulkan/RADV stack, CPU prefill beats the 780M ~2.6×, robust to
+  ubatch/length tuning. This is a software-stack (Vulkan GEMM) characteristic, NOT proven hardware
+  superiority.* A **ROCm** comparison on the same silicon would settle it (untested here — exactly
+  what an AMD ROCm path / Dev Cloud would resolve). The decode→780M win (+38–44%) is unaffected.
