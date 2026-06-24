@@ -92,3 +92,20 @@ where it doesn't.
   directly benefit without porting — the kernels target the aie2 array; tile/ISA details differ.
 - **Maturity:** research/community bring-up, **not a production stack**. Numbers are reproducible
   via the named scripts on this exact box; vendor-grade validation is out of scope.
+
+
+## Relation to AMD's published partition (precise framing)
+
+AMD's only publicly documented CPU/iGPU/NPU partition for Ryzen AI is Lemonade's **Hybrid** mode:
+**NPU prefill → iGPU decode** (a fixed split). Our measurement on **XDNA1 (Phoenix)** finds the
+**CPU outperforms the NPU at prefill** (the NPU is dispatch-bound at GEMM — §A, patch-embed), so on
+this hardware the efficient split is **prefill→CPU, decode→iGPU, prune/vision→NPU**.
+
+Deliberately **not** over-claimed (per careful review):
+- We do **not** assert AMD's NPU-prefill assumption is "XDNA2-specific" — that's a plausible
+  hypothesis from our data, but it needs an XDNA2 comparison or AMD confirmation. The airtight
+  claim is just: *on XDNA1, CPU beats the NPU at prefill due to dispatch overhead.*
+- We found **no published INT16/BF16 XDNA1 throughput figure** to compare our ~68 GFLOP/s (int16)
+  against — that is **not** a claim our number is "the most precise public data point," only that we
+  found nothing to contradict it.
+- **No public XDNA1 LLM roadmap exists** — absence of a roadmap is **not** proof the gap is permanent.
