@@ -76,6 +76,10 @@ PASS!
 
 Run `lspci -d 1022:1502` — if it lists an **AMD IPU Device**, you have XDNA1. Chips include: Ryzen 7 7840HS/U, 8840HS/U, **8845HS**; Ryzen 9 7940HS, 8945HS; Ryzen 5 7640HS/U, 8640HS, 8645HS; desktop 8600G/8700G. (The desktop **8500G/8300G have no NPU** — Zen4c die.)
 
+## Porting SIMD kernels (AltiVec/VSX → AIE)
+
+Hand-authoring AIE vector kernels? See [`docs/ALTIVEC_TO_AIE.md`](docs/ALTIVEC_TO_AIE.md) — a translation table from PowerPC AltiVec/VSX intrinsics to the AIE2 `aie::` ISA, used to lift `pse-vcipher-collapse` onto the NPU.
+
 ## Related work / Elyan Labs
 
 Part of ongoing heterogeneous-compute research (PSE vec_perm collapse, RAM coffers / NUMA weight banking, neuromorphic device routing) by [Elyan Labs](https://elyanlabs.ai). See also [`ram-coffers`](https://github.com/Scottcjn/ram-coffers).
