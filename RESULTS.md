@@ -45,6 +45,56 @@ Avg NPU GFLOPS:      67.8553
 PASS!
 ```
 
+## Heterogeneous inference benchmark — CPU / Radeon 780M / XDNA1 NPU
+
+Goal: show that an **integrated-only** machine (CPU + iGPU + NPU, *no discrete GPU*) is a
+real inference box. The discrete RTX 4070 is deliberately excluded. iGPU = AMD Radeon 780M
+via Vulkan (RADV); the NVIDIA Vulkan device is excluded with `-dev Vulkan0`.
+
+### A. Whole-model LLM inference (llama.cpp, Vulkan build, CPU vs iGPU)
+
+Qwen2.5 Q4_K_M, 8 threads. Token generation (`tg128`) is the interactive-speed metric;
+prompt processing (`pp512`) is the prefill metric.
+
+| Model | Metric | CPU only (`-ngl 0`) | CPU + Radeon 780M | Δ (iGPU vs CPU) |
+|-------|--------|---------------------|-------------------|-----------------|
+| 3B coder | tg128 | 24.17 t/s | **34.54 t/s** | **+43%** |
+| 3B coder | pp512 | 626 t/s* | 677 t/s | ~even |
+| 7B instruct | tg128 | 11.02 t/s | **16.50 t/s** | **+50%** |
+| 7B instruct | pp512 | **777 t/s** | 321 t/s | **−59%** |
+
+\* 3B CPU pp512 had high run-to-run variance; treat as approximate.
+
+**Finding:** the integrated Radeon 780M accelerates **token generation by 43–50%**
+(memory-bandwidth bound), but on 7B **prompt prefill the CPU wins** (8× AVX-512 cores
+out-GEMM the small iGPU on big batches). The optimal policy is **iGPU for decode, CPU
+for prefill** — precisely the op→device split a routing layer (see "Toward device coffers")
+would learn.
+
+### B. Matmul throughput per device (the LLM primitive)
+
+These are each device's *demonstrated* matmul throughput. **Not a controlled benchmark** —
+shapes, dtypes, and frameworks differ (noted per row). Use as capability indicators, not a
+single ranking.
+
+| Device | Matmul | Throughput | How measured |
+|--------|--------|-----------|--------------|
+| CPU (Ryzen 7 8845HS, 8c, AVX-512) | 512³, f32, square | **155.6 GFLOPS** | NumPy / OpenBLAS |
+| **XDNA1 NPU** (gen-1, ~16 TOPS) | 512³, int16→int32, square | **67.9 GFLOPS** | IRON/mlir-aie (this repo) |
+| Radeon 780M (Vulkan) | LLM-shape gemv (m=4096,k=14336), f32 | ~39 GFLOPS | llama.cpp `test-backend-ops` |
+| Radeon 780M (Vulkan) | LLM-shape gemv, q4_K (real weights) | ~274–517 GFLOPS | llama.cpp `test-backend-ops` |
+
+**Finding:** the **first-gen XDNA1 NPU already does real GEMM at ~68 GFLOPS (int16)** — about
+44% of an 8-core AVX-512 CPU's f32 GEMM, from a ~16-TOPS part at a fraction of the power, via
+a fully open-source toolchain. This is the foundation for offloading LLM matmuls to the NPU.
+
+### Toward device coffers (next)
+
+The remaining tiers — **CPU + NPU** and **CPU + iGPU + NPU** — require routing LLM matmuls to
+the NPU (no XDNA ggml backend exists yet; a matmul-offload bridge is in progress). The routing
+policy itself reuses Elyan Labs' RAM-coffers (NUMA weight-banking) and neuromorphic
+op→region ideas, retargeted from NUMA nodes to **compute units (CPU / iGPU / NPU)**.
+
 ## Reproducing
 
 See [`docs/BRINGUP.md`](docs/BRINGUP.md). Once XRT + driver + firmware + IRON are in
