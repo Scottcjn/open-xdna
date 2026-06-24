@@ -123,6 +123,32 @@ Rationale for *prefill, FFN, int8/int16*:
 3. Position the NPU as a **low-power matmul coprocessor that frees the iGPU**, scoped to our
    own pipeline (custom, in-scope), not a general ggml backend.
 
+## PIVOT (post-M0): NPU as a sparse/selective coprocessor, not a GEMM engine
+
+M0 proved the AIE array is bad at dense regular GEMM — which is precisely the workload that
+*doesn't* fit 20 tiles of {VLIW vector + scalar + 64KB SRAM + flexible stream interconnect}.
+That topology is built for **sparse, local, data-dependent** work. So aim the NPU at the
+work that is a BAD fit for GPU/CPU and a GOOD fit for AIE, ranked by leverage × certainty:
+
+1. **Non-bijunctive pruning / top-k collapse (HIGHEST leverage, testable now).** The NPU runs
+   the `pse-vcipher-collapse` pre-filter: score K·V pairs, keep top ~25%, drop the rest
+   BEFORE the dense matmul. This flips the M0 math — the NPU need not be *fast at* GEMM; it
+   makes the GEMM **smaller**, so the iGPU then does a ~4× smaller dense op. A slow pre-filter
+   still nets a win because it changes asymptotics, not the constant. Directly reuses
+   existing AGPL IP (`pse-vcipher-collapse`).
+2. **Hebbian assist (plausible, 2nd).** Local Δw = η·pre·post co-activation updates are local
+   + parallel (no global backprop) → maps to independent per-tile compute. Fast-weights /
+   in-context memory.
+3. **GOFAI / symbolic (frontier bet).** Per-tile scalar cores + routing host production
+   rules / tetranary logic / small tree-search — the branchy integer work GPUs hate. Ties to
+   the symbolic-neural-bridge. Most novel, least certain (AIE is dataflow, not a CPU farm).
+
+### Revised first experiment (replaces dense-FFN M1)
+**P0 — NPU top-k/prune kernel:** implement a selective top-k collapse on the NPU via IRON,
+measure (a) does it run on AIE, (b) prune ratio achievable, (c) does *NPU-prune + smaller
+iGPU-matmul* beat *full iGPU-matmul* on wall-clock AND joules. Unlike dense-FFN, this CAN
+win, because the win comes from work eliminated, not work accelerated.
+
 ## Open questions for review
 1. Is prefill-FFN the right first target, or is there a better NPU-favorable op?
 2. Can XRT give us a low-overhead persistent-kernel dispatch, or is per-call setup the wall?
