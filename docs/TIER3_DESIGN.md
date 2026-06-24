@@ -219,10 +219,20 @@ work for the strong one), but the realistic FFN win is **~1.3–1.6× before ove
 accuracy, and unproven until the full path (fused collapse + measured gather + perplexity) is
 built and timed. The 3× lived only in the spreadsheet.
 
-### Remaining build (to ship the claim)
-Compose `reduce_max→threshold` into one JIT collapse design; implement+measure the gather;
-run a perplexity check at 75% prune; and **prune the producer side / use per-token selection**
-to get real work reduction. Then it's a shipped, validated win — not just analytical.
+### Kernel progress (hand-authored AIE intrinsics, all verified on XDNA1)
+- ✅ `collapse.cc` — compare+select collapse (`aie::ge`/`aie::select`), baked tau.
+- ✅ `collapse_rt.cc` — runtime tau + on-NPU shift (`aie::sub`); sweep tau, prune 50→92%.
+- ✅ `collapse_fused.cc` — **fused `reduce_max`→dynamic tau (=frac·peak)→collapse in ONE kernel**;
+  peak found in-kernel via running `aie::max` + `aie::reduce_max`; bit-exact across frac.
+- ✅ `shuffle_demo.cc` — `aie::reverse` (vec_perm/shuffle) runs on the NPU — the compaction
+  building block proven.
+- 🚧 Full top-k **stream compaction** (dense survivor pack) = prefix-sum + scatter, the hard
+  SIMD frontier; building blocks (mask, select, shuffle) all proven, the pack algorithm is next.
+
+### Remaining build (to ship the net-win claim)
+Wire the fused collapse + compaction into a real FFN/attention path; **measure** the gather;
+run a perplexity check at the chosen prune ratio; **prune the producer side / per-token**
+to get real work reduction. Then the ~1.3–1.6× becomes shipped-and-measured, not analytical.
 
 ### Revised first experiment (replaces dense-FFN M1)
 **P0 — NPU top-k/prune kernel:** implement a selective top-k collapse on the NPU via IRON,
