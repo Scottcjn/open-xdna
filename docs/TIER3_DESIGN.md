@@ -123,6 +123,23 @@ Rationale for *prefill, FFN, int8/int16*:
 3. Position the NPU as a **low-power matmul coprocessor that frees the iGPU**, scoped to our
    own pipeline (custom, in-scope), not a general ggml backend.
 
+## M0.5 RESULTS (power, measured 2026-06-23, 8845HS on AC, RAPL pkg + amdgpu)
+
+| Window | pkg power | marginal | J/GFLOP |
+|--------|-----------|----------|---------|
+| idle | 7.6 W | — | — |
+| NPU matmul (512³, looped) | 14.3 W | **+6.6 W** | 0.097 (6.6/68, generous) |
+| iGPU matmul (q4_K) | 33.5 W | **+25.9 W** | **0.065** (25.9/400) |
+
+**Verdict: dense GEMM on the NPU loses on energy too.** The NPU draws 4× less power but does
+~6× less work → the iGPU is *more* energy-efficient per GFLOP for dense matmul. Combined with
+M0 (6× slower wall-clock), **"NPU as a dense matmul offload" is dead on both axes.**
+
+**What M0.5 *confirms* as the NPU's real value:**
+- **~6.6 W absolute floor** — an always-on / background / battery niche the 26 W iGPU can't serve.
+- The pruning play wins not via NPU compute-efficiency but via **work eliminated**: prune 75% at
+  6.6 W → iGPU runs a 4× smaller matmul → net save = the iGPU work that never happened.
+
 ## PIVOT (post-M0): NPU as a sparse/selective coprocessor, not a GEMM engine
 
 M0 proved the AIE array is bad at dense regular GEMM — which is precisely the workload that
