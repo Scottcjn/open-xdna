@@ -226,6 +226,8 @@ built and timed. The 3× lived only in the spreadsheet.
   peak found in-kernel via running `aie::max` + `aie::reduce_max`; bit-exact across frac.
 - ✅ `shuffle_demo.cc` — `aie::reverse` (vec_perm/shuffle) runs on the NPU — the compaction
   building block proven.
+- ✅ `npu_collapse_xtile.py` — **cross-tile reduce** lifts the N≤4096 cap: per-tile `reduce_max`
+  on the NPU → combine partials → tiled collapse over the full vector (verified N=16384).
 - 🚧 Full top-k **stream compaction** (dense survivor pack) = prefix-sum + scatter, the hard
   SIMD frontier; building blocks (mask, select, shuffle) all proven, the pack algorithm is next.
 
