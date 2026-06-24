@@ -171,6 +171,33 @@ work that is a BAD fit for GPU/CPU and a GOOD fit for AIE, ranked by leverage ×
 - **Remaining (the net-win proof):** compose `reduce_max → threshold` into a top-k collapse,
   then measure NPU-prune (6.6W) + smaller-iGPU-matmul vs full-iGPU-matmul on wall-clock+joules.
 
+### TOP-K NET-WIN ANALYSIS (2026-06-23) — ~3× win, validates the prune thesis
+
+From measured components (NPU collapse 0.27ms end-to-end, iGPU 400 GFLOPS q4_K, marginal
+power NPU 6.6W / iGPU 25.9W), keeping top-25% (prune 75%), gather est. 3ms (NOT measured):
+
+| FFN matmul | Full iGPU | NPU-prune + small iGPU | Win |
+|------------|-----------|------------------------|-----|
+| 512×4096×4096 | 42.9 ms / 1.11 J | 14.0 ms / 0.36 J | **3.1× faster, 3.1× less energy** |
+| 512×4096×11008 | 115.4 ms / 2.99 J | 32.1 ms / 0.83 J | **3.6× faster, 3.6× less energy** |
+
+**The win is 100% from work ELIMINATED, not NPU speed** — collapse (0.27ms) is ~30–100×
+cheaper than the matmul it shrinks. The device that is *weakest at compute* (M0/M0.5) becomes
+a ~3× net win doing the cheap selection that makes the iGPU's matmul 4× smaller. This is the
+`pse-vcipher-collapse` thesis, validated on this heterogeneous setup — and it only works
+*because* the NPU isn't asked to do the heavy compute.
+
+**Honest gates (analytical proof from measured parts, not a shipped kernel):**
+1. ACCURACY unverified — assumes top-25% preserves model quality (the pse-vcipher claim);
+   perf win is real, quality needs a perplexity test.
+2. GATHER cost estimated (3ms), not measured — a fused impl must measure survivor compaction.
+3. Collapse measured as a generic elementwise proxy; the `reduce_max→threshold` fusion is
+   built-from-proven-kernels but not yet composed into one design.
+
+### Remaining build (to ship the claim)
+Compose `reduce_max→threshold` into one JIT collapse design; implement+measure the gather;
+run a perplexity check at 75% prune. Then it's a shipped, validated win — not just analytical.
+
 ### Revised first experiment (replaces dense-FFN M1)
 **P0 — NPU top-k/prune kernel:** implement a selective top-k collapse on the NPU via IRON,
 measure (a) does it run on AIE, (b) prune ratio achievable, (c) does *NPU-prune + smaller
