@@ -68,3 +68,14 @@ prune+compact that drives `pse-vcipher-collapse`.
 - `examples/kernels/collapse.cc` — hand-authored compare+select collapse (this repo).
 - `mlir_aie/include/aie_kernels/aie2/*.cc` — AMD's kernels = reference AIE-intrinsic examples.
 - AMD AIE API docs: `aie_api/aie.hpp` (the `aie::` namespace).
+
+## ⚠️ ISA finding: no arbitrary runtime shuffle (no `pshufb`/`vperm`-with-runtime-control)
+
+AIE2's `aie::shuffle` family is **structured only** — `shuffle_up`/`shuffle_down`/`rotate`/`interleave`
+(compile-time patterns). There is **no runtime-indexed gather/scatter** (no x86-`pshufb` / PPC
+`vec_perm`-with-runtime-vector, no `load_gather`/`store_scatter`, no hardware scan). Consequence:
+**SIMD stream compaction (left-pack) is not directly expressible** — the data-dependent placement
+of survivors needs the AIE *scalar* unit (see `examples/kernels/compact.cc` / `pse_collapse.cc`),
+or a structured-shuffle compaction *network* (sorting-network style — research). The prefix-sum
+itself IS vectorizable via `shuffle_up` (Hillis-Steele), but it doesn't remove the placement wall.
+This is why the collapse mask+threshold vectorize cleanly while the *pack* stays scalar.

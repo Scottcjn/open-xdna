@@ -230,7 +230,7 @@ built and timed. The 3× lived only in the spreadsheet.
   on the NPU → combine partials → tiled collapse over the full vector (verified N=16384).
 - ✅ `compact.cc` — **full stream compaction**: survivors (x≥τ) packed dense at the front,
   tail zeroed (scalar-unit scan+gather; verified N=4096). The pack that shrinks downstream work.
-  Vectorized form (prefix-sum + `aie::shuffle` runtime gather) is the perf optimization.
+  Vectorization wall (FINDING): AIE2 has NO runtime-indexed gather/scatter (structured shuffle only), so SIMD left-pack isn't expressible — scalar-unit compaction is the correct call; prefix-sum vectorizes via shuffle_up but the placement doesn't. See docs/ALTIVEC_TO_AIE.md.
 
 ### Remaining build (to ship the net-win claim)
 Wire the fused collapse + compaction into a real FFN/attention path; **measure** the gather;
