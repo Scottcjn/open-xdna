@@ -93,6 +93,36 @@ Rationale for *prefill, FFN, int8/int16*:
 - quantization error degrades output quality beyond a fixed threshold, OR
 - per-op marshalling overhead (host↔NPU copy + quant) exceeds the GEMM time saved.
 
+## M0 RESULTS (measured 2026-06-23) — verdict: NPU-for-speed is dead; NPU-for-watts is the play
+
+- Stock IRON `single_core` matmul **cannot compile at FFN shapes**: `32³` tiles exceed the
+  AIE DMA block-descriptor range at K=4096; `64³` tiles exceed the AIE tile's 64 KB local
+  memory. The demo kernel is monolithic with no host-side K-blocking → must be reengineered
+  (custom host-blocked GEMM dispatching the NPU's native ~512³ int tile, accumulate on host).
+- **Wall-clock floor (one 512×4096×4096 FFN block, 17.2 GFLOP):**
+
+  | Device | time/GEMM | notes |
+  |--------|-----------|-------|
+  | iGPU 780M (q4_K, ~400 GFLOPS) | **43 ms** | the bar |
+  | CPU (f32, 155 GFLOPS) | 111 ms | |
+  | XDNA1 NPU (int16, 68 GFLOPS *compute floor*) | **253 ms** | ignores dispatch overhead → only worse |
+
+  → On throughput the NPU is ~6× slower than the iGPU. **Do not build Tier-3 for speed.**
+- **Energy estimate (the actual win):** NPU ~253 ms × ~2–3 W ≈ 0.5–0.75 J vs iGPU 43 ms ×
+  ~20 W ≈ 0.86 J → NPU plausibly wins **joules-per-GEMM**, and runs concurrently while the
+  iGPU does attention. **This is the only honest justification and it is unconfirmed until
+  measured with power sensors.**
+
+## Revised plan (post-M0)
+
+1. **M0.5 — power instrumentation:** read amdgpu/RAPL/SoC power during an NPU GEMM vs iGPU
+   GEMM at matched FLOPs. Confirm or kill the joules-per-GEMM win. THIS is now the gate.
+2. **M1 (only if M0.5 wins) — reengineered host-blocked NPU GEMM:** custom kernel that tiles
+   FFN matmuls into NPU-native int8/int16 blocks (work *with* the silicon, AltiVec-style),
+   used for sustained/battery/concurrent inference — NOT as a speed path.
+3. Position the NPU as a **low-power matmul coprocessor that frees the iGPU**, scoped to our
+   own pipeline (custom, in-scope), not a general ggml backend.
+
 ## Open questions for review
 1. Is prefill-FFN the right first target, or is there a better NPU-favorable op?
 2. Can XRT give us a low-overhead persistent-kernel dispatch, or is per-call setup the wall?
