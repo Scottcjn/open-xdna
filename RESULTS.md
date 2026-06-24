@@ -113,3 +113,26 @@ sudo bash scripts/run_example.sh basic/matrix_multiplication/single_core
   persistent (DKMS) — see roadmap.
 - These are single-kernel microbenchmarks, not end-to-end LLM throughput. Matmul is the
   dominant LLM primitive; full-model results will be added as the inference path lands.
+
+## 3-way heterogeneous LLM benchmark (CPU + Radeon 780M + NPU, 96 GB unified)
+
+Measured with `llama-bench` (CPU+Vulkan build, NVIDIA excluded via `-dev Vulkan0`), Qwen2.5,
+pp512 / tg128, 8 threads. The NPU is the prune coprocessor (see FFN/attention prune results),
+not a token-gen device.
+
+| Model (quant) | decode CPU | decode 780M | iGPU decode win | prefill CPU | prefill 780M |
+|---------------|-----------:|------------:|:---------------:|------------:|-------------:|
+| Qwen2.5-3B Q4_K   | 24.8 t/s | **35.4 t/s** | **+43%** | **1685 t/s** | 693 t/s |
+| Qwen2.5-7B Q4_K   | 11.6 t/s | **16.7 t/s** | **+44%** | **632 t/s**  | 302 t/s |
+| Qwen2.5-14B Q3_K  |  7.2 t/s |  **9.9 t/s** | **+38%** | **408 t/s**  | 156 t/s |
+
+**Device-specialization law (consistent across all sizes):**
+- **Decode → Radeon 780M** (bandwidth-bound): +38–44% over CPU at every size.
+- **Prefill → CPU** (compute-bound): 8× AVX-512 cores beat the iGPU 2.1–2.6×.
+- **Prune → XDNA1 NPU** (the coprocessor): 1.6× FFN / 4× attention work-elimination at ~6.6 W.
+- The optimal integrated-only engine routes **prefill→CPU, decode→780M, prune→NPU** — the
+  "device coffers" policy, now backed by measurements.
+
+**The 96 GB unified-memory win:** the 14B (6.8 GB) runs on the 780M via its 46 GB UMA — with
+KV/context headroom the 8 GB discrete GPU lacks; 30B+ models run *only* on the iGPU+96 GB path.
+Integrated graphics + a big RAM pool is a real large-model inference box, no discrete GPU.
