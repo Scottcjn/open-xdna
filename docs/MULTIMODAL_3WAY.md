@@ -37,3 +37,20 @@ at ~6.6 W, concurrent), **prefill on the CPU**, **decode on the 780M**, with the
 attention/FFN — all over 96 GB shared. The *components* are measured; the *full pipeline wiring*
 (one model, three units, end-to-end, timed) is the integration build. We don't claim the
 end-to-end win until it's wired and measured — but every piece it rests on is proven on silicon.
+
+
+## gemma4:26b — measured, and an honest packaging finding (2026-06-24)
+
+- ✅ **gemma4:26b runs at 16.5 tok/s decode** on the integrated box via **ollama** (GPU-accelerated
+  on the 780M; 17 GB in the 96 GB pool). The bigger-multimodal-model-on-96GB result holds — a model
+  2× the 8 GB discrete card's VRAM, usable on integrated graphics.
+- ⚠️ **The ollama gemma4 GGUF will NOT load in stock llama.cpp** — even after rebuilding latest master
+  (which *does* ship gemma4 support): `done_getting_tensors: wrong number of tensors; expected 1014,
+  got 658`. Ollama repackages the model (and likely splits the vision/projector tensors into a separate
+  blob), so its GGUF diverges from mainstream llama.cpp's gemma4 definition. A rebuild doesn't fix it;
+  a HuggingFace-format gemma GGUF would be needed for the controlled CPU-vs-780M split.
+- **Device split + prune still apply**: prefill→CPU / decode→780M is measured on Qwen (3-way sweep)
+  and holds for any decoder LLM. NPU-prune is measured (attn 2–4×, FFN 1.6×, layer 1.27×). HONEST
+  caveat: **decode is memory-bandwidth-bound**, so prune helps decode mainly via reduced KV-cache
+  traffic (KV-prune) and skipped weight reads, less via FLOPs — it helps *prefill* most. A precise
+  gemma4-with-prune throughput needs the in-graph NPU hook (the integration build), not a projection.
