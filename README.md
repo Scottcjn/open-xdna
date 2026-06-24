@@ -1,94 +1,98 @@
-# open-xdna
+<div align="center">
 
-**Open-source bring-up for the first-generation AMD XDNA NPU (XDNA1 / Phoenix / Hawk Point) on Linux — with a verified matrix-multiply running on the silicon.**
+# ⚡ open-xdna
 
-> The popular "LLMs on the Ryzen AI NPU under Linux" stacks — **FastFlowLM** and **AMD Lemonade** — support **only XDNA2** (Ryzen AI 300/400 "Strix"). The **first-generation XDNA1 NPU** in millions of **Ryzen 7040 / 8040 ("Phoenix" / "Hawk Point")** laptops is left behind. `open-xdna` documents and scripts the full open-source path to actually run compute on that gen-1 NPU.
+### Running AI on the AMD NPU that AMD says you can't.
 
-If you have a Ryzen 7 7840/8840-series, Ryzen 5 7640/8640-series, or 8600G and your NPU shows up as **`RyzenAI-npu1`** (PCI device `1502`), this repo is for you.
+**The first-generation XDNA1 NPU — "Phoenix" / "Hawk Point" — in millions of Ryzen laptops, brought up on Linux with 100% open source. Models running on the silicon. Custom vector kernels hand-authored in the AIE ISA.**
 
-> **New here, or hit an error?** See the [**FAQ & troubleshooting**](FAQ.md) — fixes for `xrt-smi` "0 devices found", `ERT_CMD_STATE_ABORT`, the `objcopy` AIE format error, and the CXXABI link failure.
+![License](https://img.shields.io/badge/license-AGPLv3%20%2B%20commercial-blue)
+![NPU](https://img.shields.io/badge/NPU-XDNA1%20Phoenix%20%C2%B7%20RyzenAI--npu1-red)
+![Status](https://img.shields.io/badge/gen--1%20NPU-running%20on%20Linux-brightgreen)
+![Stack](https://img.shields.io/badge/100%25-open%20source-success)
+![Built from](https://img.shields.io/badge/Ubuntu-25.10%20%C2%B7%20kernel%206.17%20%C2%B7%20GCC%2015-orange)
 
----
-
-## Status
-
-| Component | State |
-|-----------|-------|
-| NPU enumeration via open-source XRT | ✅ Working |
-| Driver/runtime bring-up (XRT + XDNA SHIM, built from source) | ✅ Working |
-| Compile a kernel with IRON/mlir-aie + Peano | ✅ Working |
-| **Passthrough kernel on the NPU** | ✅ **PASS** |
-| **512×512×512 int16 matmul on the NPU** | ✅ **PASS — ~68 GFLOPS** |
-| Full LLM inference | 🚧 In progress (matmul is the core primitive) |
-
-Verified on: **HP Victus 16**, **Ryzen 7 8845HS** (Hawk Point), NPU `RyzenAI-npu1` (arch `aie2`, 6×5 tiles), **Ubuntu 25.10**, kernel **6.17**, **GCC 15.2**. See [`RESULTS.md`](RESULTS.md).
+</div>
 
 ---
 
-## Why this is non-trivial (the four fixes)
+> **FastFlowLM** and **AMD Lemonade** — the stacks everyone points to for "LLMs on the Ryzen AI NPU" — support **XDNA2 only**. If you own a **Ryzen 7040 / 8040** laptop, AMD's answer for your NPU on Linux is *"not available — use the GPU."*
+>
+> **`open-xdna` is the answer that says "here's how."**
 
-Getting a kernel onto an XDNA1 NPU on a current Linux needs four non-obvious steps that no single guide covers. Full detail in [`docs/BRINGUP.md`](docs/BRINGUP.md); summary:
+```
+$ xrt-smi examine
+  [0000:06:00.1]   RyzenAI-npu1   aie2   6x5      ←  the chip they left behind, alive on Linux
+```
 
-1. **Install `libxrt_driver_xdna.so`, not just `libvxdna.so`.** XRT discovers the NPU by scanning for the `libxrt_driver_*` driver-registration library. Miss it and `xrt-smi examine` reports **"0 devices found"** even though the kernel driver is bound.
-2. **Use the matched (staging) `amdxdna.ko`.** The mainline kernel driver (≤6.17) lacks newer ioctls (`aie2_query_telemetry`, `aie2_get_array`) the current XRT SHIM expects. Load the driver built from [`amd/xdna-driver`](https://github.com/amd/xdna-driver) instead.
-3. **Put `llvm-objcopy` on `PATH`.** IRON renames a symbol in the compiled AIE2 object with `objcopy`. Peano ships no `objcopy`, and GNU `/usr/bin/objcopy` can't parse the AIE2 ELF (`Unable to recognise the format`). Add any recent LLVM's `llvm-objcopy` (e.g. `/usr/lib/llvm-20/bin`).
-4. **Match the NPU firmware version.** Stale firmware aborts command submission (`ERT_CMD_STATE_ABORT`, `xdna_mailbox ret -22`, "Command bo size too large"). Install the firmware the runtime expects (here: `npu.sbin.1.5.5.391`).
+## 🏆 Proven on silicon (every row measured, on a real Ryzen 7 8845HS)
 
----
+| Milestone | Result |
+|-----------|:------:|
+| 🔌 Gen-1 NPU driven by **fully open-source** XRT + driver + firmware | ✅ |
+| ♻️ Survives reboot + kernel updates (DKMS) | ✅ |
+| ⚙️ `512³` int16 matmul on the NPU | ✅ **~68 GFLOPS** |
+| 🧠 A real model's forward pass (2-layer MLP) on the NPU | ✅ bit-exact |
+| ✂️ Non-bijunctive **collapse** (keep-strong / prune-weak) | ✅ prune 50→92% |
+| 🛠️ **Hand-authored AIE vector kernel** (`aie::ge`+`aie::select`) | ✅ first compile |
+| 🔁 Fused `reduce_max`→dynamic-τ collapse in **one** kernel | ✅ data-adaptive |
+| 🔀 `aie::reverse` (vec_perm / shuffle) on the NPU | ✅ |
 
-## Quick start
+## 😈 Why this exists
+
+Hardware vendors retire silicon with *software*, not screwdrivers. AMD moved on to XDNA2 and told gen-1 owners the NPU "isn't available" for LLMs on Linux. The chip is fine. The driver's in the kernel. The compiler exists. What was missing was a recipe — so here's one, end to end, with receipts.
+
+## 🔧 The four fixes nobody documented together
+
+Getting a kernel onto an XDNA1 NPU on a current Linux needs four non-obvious moves (full detail: [`docs/BRINGUP.md`](docs/BRINGUP.md), error-string fixes in the [**FAQ**](FAQ.md)):
+
+1. **Install `libxrt_driver_xdna.so`** (not just `libvxdna.so`) — else `xrt-smi` reports *"0 devices found"*.
+2. **Load the matched staging `amdxdna.ko`** — mainline (≤6.17) lacks ioctls the SHIM needs.
+3. **Put `llvm-objcopy` on `PATH`** — GNU objcopy can't parse the AIE2 ELF.
+4. **Match the NPU firmware** — stale firmware aborts commands (`ERT_CMD_STATE_ABORT`).
+
+## 🚀 Quick start
 
 ```bash
-# 0. Prereqs: amd/xdna-driver built (XRT base + SHIM + staging driver), see docs/BRINGUP.md
-# 1. Install IRON/mlir-aie + Peano (downloads wheels)
-bash scripts/setup_iron.sh
-
-# 2. Match driver + firmware (one-time, needs sudo; reverts on reboot unless made persistent)
-sudo bash scripts/swap_driver.sh
-sudo bash scripts/install_firmware.sh 1.5.5.391
-
-# 3. Run a kernel on the NPU
-sudo bash scripts/run_example.sh basic/passthrough_kernel
-sudo bash scripts/run_example.sh basic/matrix_multiplication/single_core
+bash scripts/setup_iron.sh                      # IRON/mlir-aie + Peano
+sudo bash scripts/swap_driver.sh                # matched staging driver
+sudo bash scripts/install_firmware.sh 1.5.5.391 # matching NPU firmware
+sudo bash scripts/run_example.sh basic/matrix_multiplication/single_core   # 68 GFLOPS on the NPU
 ```
 
-Expected matmul tail:
-
+Run the hand-authored kernels:
+```bash
+python3 examples/npu_tiny_mlp.py            # a model's matmuls on the NPU
+python3 examples/npu_collapse_fused.py      # fused reduce_max -> dynamic-tau collapse
+python3 examples/npu_collapse_runtime.py    # runtime-tau collapse (on-NPU aie::sub shift)
+python3 examples/npu_shuffle_demo.py        # aie::reverse (vec_perm) on the NPU
 ```
-Avg NPU matmul time: 3956us.
-Avg NPU gflops: 67.8553
-PASS!
+
+## 🧬 The flex: you can hand-write AIE kernels like AltiVec
+
+The AIE2 vector ISA is the **same primitive class as PowerPC AltiVec/VSX** — just new mnemonics. The non-bijunctive collapse, hand-authored ([`examples/kernels/collapse.cc`](examples/kernels/collapse.cc)):
+
+```cpp
+aie::vector<bfloat16,32> x   = aie::load_v<32>(a + i);    // vec_ld
+aie::mask<32>            keep = aie::ge(x, tau_v);         // vec_cmpge  → mask
+aie::vector<bfloat16,32> out  = aie::select(zero_v, x, keep); // vec_sel: keep ? x : 0
+aie::store_v(c + i, out);                                 // vec_st
 ```
 
----
+Porting your own SIMD kernels? [`docs/ALTIVEC_TO_AIE.md`](docs/ALTIVEC_TO_AIE.md) maps the whole vocabulary.
 
-## Roadmap
+## 📊 The honest part
 
-- [x] Drive XDNA1 with fully open-source XRT
-- [x] Compile + run passthrough and matmul kernels on the NPU
-- [ ] **Heterogeneous inference benchmark** — run a model across **CPU + Radeon 780M (iGPU, Vulkan) + XDNA1 NPU**, deliberately *not* the discrete GPU, and chart performance: CPU-only → +iGPU → +NPU.
-- [ ] NPU matmul-offload into a llama.cpp-style inference path
-- [ ] Device-aware tensor routing (treating CPU/iGPU/NPU as compute "coffers")
-- [ ] Make driver + firmware persistent (DKMS)
-- [ ] Upstream report: mainline `amdxdna.ko` missing-ioctl gap
+This is **not** a turnkey LLM server, and the NPU is **not** a fast matmul engine — measured, it's ~6× slower than the integrated Radeon 780M at dense GEMM and loses on energy-per-GFLOP for dense work ([`RESULTS.md`](RESULTS.md)). Its real value is a **~6.6 W power floor** and cheap **pruning/selection** that lets a stronger device do less work. A prune-then-shrink FFN nets ~**1.3–1.6×** less work (not the naive 4× — you still pay the producer projection), gated on accuracy. We measure before we claim, and we mark every frontier.
 
-## Hardware: does my chip have an XDNA1 NPU?
+## 🗺️ Does my chip have an XDNA1 NPU?
 
-Run `lspci -d 1022:1502` — if it lists an **AMD IPU Device**, you have XDNA1. Chips include: Ryzen 7 7840HS/U, 8840HS/U, **8845HS**; Ryzen 9 7940HS, 8945HS; Ryzen 5 7640HS/U, 8640HS, 8645HS; desktop 8600G/8700G. (The desktop **8500G/8300G have no NPU** — Zen4c die.)
+`lspci -d 1022:1502` → "AMD IPU Device" = yes. **7840HS/U · 8840HS/U · 8845HS · 7940HS · 8945HS · 7640HS/U · 8640HS · 8645HS · 8600G/8700G.** (Desktop **8500G/8300G have no NPU** — Zen4c die.)
 
-## Porting SIMD kernels (AltiVec/VSX → AIE)
+## 🔗 Related work — Elyan Labs
 
-Hand-authoring AIE vector kernels? See [`docs/ALTIVEC_TO_AIE.md`](docs/ALTIVEC_TO_AIE.md) — a translation table from PowerPC AltiVec/VSX intrinsics to the AIE2 `aie::` ISA, used to lift `pse-vcipher-collapse` onto the NPU.
+Heterogeneous-compute research (PSE non-bijunctive collapse, RAM coffers / NUMA weight banking, neuromorphic device routing) by [**Elyan Labs**](https://elyanlabs.ai). See also [`ram-coffers`](https://github.com/Scottcjn/ram-coffers) · [`pse-vcipher-collapse`](https://github.com/Scottcjn/pse-vcipher-collapse).
 
-## Related work / Elyan Labs
+## 📜 License
 
-Part of ongoing heterogeneous-compute research (PSE vec_perm collapse, RAM coffers / NUMA weight banking, neuromorphic device routing) by [Elyan Labs](https://elyanlabs.ai). See also [`ram-coffers`](https://github.com/Scottcjn/ram-coffers).
-
-## License
-
-**AGPLv3** (this repo's original scripts/docs) — see [`LICENSE`](LICENSE). If you modify
-this or run it as a network service, AGPLv3 §13 requires sharing your corresponding
-source. A **commercial / proprietary license** (no copyleft obligation) is available for
-closed-source or SaaS use — see [`COMMERCIAL.md`](COMMERCIAL.md). AMD's XDNA/XRT and
-IRON/mlir-aie toolchains are licensed separately (Apache-2.0 WITH LLVM-exception) and are
-installed, not redistributed here.
+**AGPLv3** (this repo's original work) — see [`LICENSE`](LICENSE). A **commercial / proprietary license** (no copyleft) is available for closed-source or SaaS use: [`COMMERCIAL.md`](COMMERCIAL.md). AMD's XDNA/XRT and IRON/mlir-aie toolchains are Apache-2.0 WITH LLVM-exception and installed, not redistributed.
