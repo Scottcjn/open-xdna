@@ -40,6 +40,7 @@ $ xrt-smi examine
 | 🔀 `aie::reverse` (vec_perm / shuffle) on the NPU | ✅ |
 | 🎯 **Full collapse** (reduce+threshold+compact) in **one** AIE kernel | ✅ |
 | 📈 **Measured FFN net-win** (NPU prune → dense down_proj) | ✅ **1.6× @ cos 0.998** |
+| 🎲 **Attention KV-prune** (NPU evicts low-mass keys) | ✅ **4× @ cos 0.976** |
 
 ## 😈 Why this exists
 
@@ -71,6 +72,7 @@ python3 examples/npu_collapse_runtime.py    # runtime-tau collapse (on-NPU aie::
 python3 examples/npu_shuffle_demo.py        # aie::reverse (vec_perm) on the NPU
 python3 examples/npu_pse_collapse.py        # FULL collapse (reduce+threshold+compact) in ONE kernel
 python3 examples/npu_ffn_prune.py           # MEASURED FFN net-win + accuracy tradeoff
+python3 examples/npu_attention_prune.py     # MEASURED attention KV-prune (both GEMMs shrink)
 ```
 
 ## 🧬 The flex: you can hand-write AIE kernels like AltiVec
