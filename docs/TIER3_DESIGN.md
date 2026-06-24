@@ -173,6 +173,8 @@ work that is a BAD fit for GPU/CPU and a GOOD fit for AIE, ranked by leverage ×
 
 ### TOP-K NET-WIN ANALYSIS (2026-06-23) — ~3× win, validates the prune thesis
 
+**ADVERSARIAL REVIEW NOTE (2026-06-23):** See separate analysis. Headline 3.1-3.6x is a stitched projection, not measured. Multiple structural issues likely prevent it materializing at that magnitude.
+
 From measured components (NPU collapse 0.27ms end-to-end, iGPU 400 GFLOPS q4_K, marginal
 power NPU 6.6W / iGPU 25.9W), keeping top-25% (prune 75%), gather est. 3ms (NOT measured):
 
@@ -194,9 +196,33 @@ a ~3× net win doing the cheap selection that makes the iGPU's matmul 4× smalle
 3. Collapse measured as a generic elementwise proxy; the `reduce_max→threshold` fusion is
    built-from-proven-kernels but not yet composed into one design.
 
+### ⚠️ CORRECTION (Grok adversarial review, 2026-06-24) — the 3× was overstated
+
+A second-model review found a real conceptual error in the analysis above. **Keep the thesis,
+drop the 3× number:**
+- **You can't prune what you haven't computed.** A real FFN pays FULL cost for the up/gate
+  projection that *produces* the intermediate, then prunes before the down projection: cost is
+  `full + 0.25·full = 1.25`, i.e. **~1.3–1.6× less FFN work — not 4×.** Attention stays full →
+  whole-model speedup is far below 3×. The table above priced one matmul in isolation (wrong).
+- **q4_K gather isn't free:** selecting 25% of K breaks the contiguous quant blocks that yield
+  ~400 GFLOPS; dequant-on-fly loses that throughput, repack costs gather+scale+rewrite. The
+  pruned matmul will run *below* 400 GFLOPS, so 10.7 ms was the most optimistic case.
+- **NPU collapse may be a net latency ADDER:** the select is a tiny metadata decision the iGPU
+  (which already owns the activation) can do in µs; routing it to the NPU adds dispatch + a
+  cross-engine barrier.
+- **Power figures were extrapolated from dense matmul**, not a tiny select; energy win likely <2×.
+- **Accuracy gate dominates:** 75% global (same-mask-all-rows) pruning is aggressive structured
+  pruning; per-token selection is kinder but destroys the single-dense-small-matmul assumption.
+
+Honest restatement: the **core thesis holds** (use the low-power weak device to *eliminate*
+work for the strong one), but the realistic FFN win is **~1.3–1.6× before overheads**, gated on
+accuracy, and unproven until the full path (fused collapse + measured gather + perplexity) is
+built and timed. The 3× lived only in the spreadsheet.
+
 ### Remaining build (to ship the claim)
 Compose `reduce_max→threshold` into one JIT collapse design; implement+measure the gather;
-run a perplexity check at 75% prune. Then it's a shipped, validated win — not just analytical.
+run a perplexity check at 75% prune; and **prune the producer side / use per-token selection**
+to get real work reduction. Then it's a shipped, validated win — not just analytical.
 
 ### Revised first experiment (replaces dense-FFN M1)
 **P0 — NPU top-k/prune kernel:** implement a selective top-k collapse on the NPU via IRON,
