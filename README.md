@@ -94,6 +94,10 @@ aie::store_v(c + i, out);                                 // vec_st
 
 Porting your own SIMD kernels? [`docs/ALTIVEC_TO_AIE.md`](docs/ALTIVEC_TO_AIE.md) maps the whole vocabulary.
 
+## 📒 Full benchmark log (by model)
+
+Every measurement, organized by model/architecture — what was tested, the result, measured-vs-projected: [`BENCHMARKS.md`](BENCHMARKS.md). Includes the honest negatives (gemma4 layer-prune net loss, vision offload-not-speed).
+
 ## 📊 The honest part
 
 This is **not** a turnkey LLM server, and the NPU is **not** a fast matmul engine — measured, it's ~6× slower than the integrated Radeon 780M at dense GEMM and loses on energy-per-GFLOP for dense work ([`RESULTS.md`](RESULTS.md)). Its real value is a **~6.6 W power floor** and cheap **pruning/selection** that lets a stronger device do less work. A prune-then-shrink FFN nets ~**1.3–1.6×** less work (not the naive 4× — you still pay the producer projection), gated on accuracy. We measure before we claim, and we mark every frontier.
