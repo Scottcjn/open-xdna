@@ -42,6 +42,7 @@ $ xrt-smi examine
 | 📈 **Measured FFN net-win** (NPU prune → dense down_proj) | ✅ **1.6× @ cos 0.998** |
 | 🎲 **Attention KV-prune** (NPU evicts low-mass keys) | ✅ **4× @ cos 0.976** |
 | 🖼️ **Vision pipeline** (rgba2gray→3×3 conv→threshold) on the NPU | ✅ **PASS** — the NPU's native CNN strength |
+| 🧩 **SigLIP/ViT patch-embed** wired on the NPU | ✅ bit-exact (offload play; ~3.2× slower than CPU at base size — honest) |
 
 ## 😈 Why this exists
 
@@ -77,6 +78,7 @@ python3 examples/npu_pse_collapse.py        # FULL collapse (reduce+threshold+co
 python3 examples/npu_ffn_prune.py           # MEASURED FFN net-win + accuracy tradeoff
 python3 examples/npu_attention_prune.py     # MEASURED attention KV-prune (both GEMMs shrink)
 python3 mlir-aie/programming_examples/vision/edge_detect/edge_detect.py -W 512 -H 512  # 2D conv vision pipeline on NPU
+python3 examples/npu_patch_embed.py         # SigLIP/ViT patch-embed on the NPU (measured, honest)
 ```
 
 ## 🧬 The flex: you can hand-write AIE kernels like AltiVec

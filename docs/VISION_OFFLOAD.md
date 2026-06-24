@@ -48,8 +48,13 @@ prefill** — all over the 96 GB unified pool, no discrete GPU.
 
 - ✅ **Proven**: conv / 2D-filter / colorspace vision kernels run on the NPU (edge_detect PASS).
   These are the building blocks of a vision tower.
-- 🚧 **Not yet done**: wiring a *specific* model's vision encoder (e.g., a SigLIP/ViT tower) to
-  these NPU kernels end-to-end, and measuring the offloaded-encoder latency/power vs CPU/iGPU.
-  That's the integration build — the primitives are in place; the model-specific hook is next.
+- ✅ **SigLIP/ViT patch-embed wired + measured** (`examples/npu_patch_embed.py`): the patch-projection
+  matmul ([256×768]@[768×768], SigLIP-base/16) runs on the NPU, **bit-exact**. HONEST measurement: at
+  base size the NPU (int16, 6.6 ms / 46 GFLOP/s, dispatch-bound) is **~3.2× SLOWER than fair CPU f32
+  BLAS** (2.0 ms / 148 GFLOP/s). The win is **offload + ~6.6 W + scaling** (frees CPU/iGPU for the LLM,
+  gap closes at larger image/batch), **not raw latency** at SigLIP-base. Don't quote int32-numpy as the
+  CPU baseline — it's unoptimized (~1.5 GFLOP/s) and makes the NPU look 34× faster, which is false.
+- 🚧 **Not yet done**: full multi-stage encoder (conv stem + transformer blocks) + a batched/larger-image
+  regime where the NPU's offload+power actually nets ahead; measure end-to-end encoder latency & SoC power.
 - The "boost" is expected to be real *because* this is the NPU's native workload — but it is a
   projection from the proven primitives until a full vision tower is wired and measured.
