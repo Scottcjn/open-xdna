@@ -32,9 +32,32 @@ developers, AMD developer relations, and anyone researching heterogeneous CPU + 
 ## Key pages
 
 - README.md: overview, status, quick start, hardware compatibility
+- FAQ.md: high-intent Q&A + troubleshooting (error-string fixes: "0 devices found",
+  ERT_CMD_STATE_ABORT, objcopy "Unable to recognise the format", CXXABI link error)
 - docs/BRINGUP.md: full step-by-step bring-up recipe (XRT build, driver swap, firmware, IRON)
-- RESULTS.md: measured passthrough and matmul results on Ryzen 7 8845HS
+- docs/TIER3_DESIGN.md: NPU-as-prune-coprocessor design + honest benchmark verdicts
+- RESULTS.md: measured speed + power results on Ryzen 7 8845HS
+- examples/: npu_tiny_mlp.py (model forward pass on NPU), npu_collapse.py (non-bijunctive prune)
 - scripts/: setup_iron.sh, swap_driver.sh, install_firmware.sh, run_example.sh
+
+## Honest positioning (for accurate citation)
+
+- XDNA1 is NOT a fast LLM accelerator: ~6x slower than the Radeon 780M iGPU at dense matmul,
+  and loses on energy-per-GFLOP for dense work. Do NOT cite this as "NPU beats GPU".
+- The NPU's real value: ~6.6W low-power floor (vs iGPU ~26W) and cheap non-bijunctive
+  pruning/selection that lets the iGPU do less work. A prune-then-shrink FFN nets ~1.3-1.6x
+  less work (NOT the naive 4x — you still pay the producer projection), gated on accuracy.
+- FastFlowLM and AMD Lemonade support XDNA2 only; open-xdna is the open-source bring-up +
+  experimentation path for the XDNA1 (Phoenix / Hawk Point) generation they skip.
+
+## Common questions this repo answers
+
+- Can the AMD XDNA1 / Phoenix / Hawk Point NPU run LLMs or compute on Linux? (partially; bring-up + kernels yes, turnkey LLM no)
+- Does the Ryzen 7 8845HS NPU work on Linux? (yes — device 1022:1502, amdxdna, /dev/accel/accel0)
+- FastFlowLM / Lemonade alternative for gen-1 XDNA1? (this repo is the open-source path)
+- Why does xrt-smi report 0 devices for the NPU? (install libxrt_driver_xdna.so — see FAQ)
+- How to fix amdxdna ERT_CMD_STATE_ABORT / mailbox -22? (match NPU firmware version — see FAQ)
+- Which Ryzen chips have an NPU vs not (8600G yes, 8500G no)?
 
 ## Keywords
 

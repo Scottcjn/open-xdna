@@ -6,6 +6,8 @@
 
 If you have a Ryzen 7 7840/8840-series, Ryzen 5 7640/8640-series, or 8600G and your NPU shows up as **`RyzenAI-npu1`** (PCI device `1502`), this repo is for you.
 
+> **New here, or hit an error?** See the [**FAQ & troubleshooting**](FAQ.md) — fixes for `xrt-smi` "0 devices found", `ERT_CMD_STATE_ABORT`, the `objcopy` AIE format error, and the CXXABI link failure.
+
 ---
 
 ## Status
