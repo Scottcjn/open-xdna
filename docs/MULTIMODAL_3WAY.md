@@ -54,3 +54,28 @@ end-to-end win until it's wired and measured — but every piece it rests on is 
   caveat: **decode is memory-bandwidth-bound**, so prune helps decode mainly via reduced KV-cache
   traffic (KV-prune) and skipped weight reads, less via FLOPs — it helps *prefill* most. A precise
   gemma4-with-prune throughput needs the in-graph NPU hook (the integration build), not a projection.
+
+
+## gemma4 + NPU-prune — MEASURED on gemma4's real dims (honest negative result)
+
+Ran the prune on a true gemma4-shaped layer (d=2816, FFN=2112, 16 heads, GQA-8 — gemma4:26b's
+actual config), 50% KV + 50% FFN prune (`examples/npu_gemma4_layer_prune.py`):
+
+| | full | +NPU-prune |
+|---|---|---|
+| matmul FLOPs | 47.6 G | 43.2 G — **only 1.10× less** |
+| wall-clock (CPU BLAS) | 266 ms | 377 ms — **0.71× (SLOWER)** |
+| output cosine | — | 0.957 |
+
+**Verdict: structured layer-prune does NOT help gemma4.** Its FFN (2112) is *smaller* than
+d_model (2816) and it uses GQA, so the unprunable projections (QKV/Wo/up-gate) dominate — only
+~10% of the layer is prunable, and the gather overhead to densify survivors exceeds that, making
+the pruned path a **net loss** (and you'd pay a 0.957 cosine cost for it).
+
+**What this means honestly:** the earlier prune wins (4× attention, 1.6× FFN) were
+**architecture-specific** — they need long context (big KV → KV-prune) or a large FFN. gemma4's
+balanced small-FFN + GQA design isn't a prune target. **For gemma4, the NPU's value is the vision
+front-end (multimodal, its native CNN work) + running the 17 GB model on the 96 GB iGPU — not
+pruning.** Prune is a tool for the *right* architecture, not a universal win. (KV-prune may still
+help gemma4 *decode* via reduced cache bandwidth at long context — a separate, bandwidth-bound
+measurement, not this compute-bound layer test.)
