@@ -109,3 +109,19 @@ Deliberately **not** over-claimed (per careful review):
   against — that is **not** a claim our number is "the most precise public data point," only that we
   found nothing to contradict it.
 - **No public XDNA1 LLM roadmap exists** — absence of a roadmap is **not** proof the gap is permanent.
+
+## F. NPU camera-effects feasibility (the v4l2 daemon gate) — *measured*
+
+Full per-frame conv/colorspace pipeline (rgba2gray→3×3 filter2d→threshold→gray2rgba→blend) on the
+NPU, **including the host DMA round-trip** (what a v4l2 daemon pays per frame), `npu_camera_fps.py`:
+
+| resolution | ms/frame | FPS | headroom @30fps |
+|---|---|---|---|
+| 640×480 | 1.02 | **985** | 32× |
+| 1280×720 | 2.21 | **451** | 15× |
+| 1920×1080 | 4.54 | **220** | 7× |
+
+**Verdict:** real-time NPU camera effects are feasible with large headroom — 1080p uses ~14% of a
+30fps frame budget at ~6.6 W. Foundation for an open-source Linux NPU webcam-effects daemon
+(the Windows-Studio-Effects gap). First effect = conv filter/stylize (proven); background-blur
+segmentation is the next milestone (needs a seg model on the NPU).
