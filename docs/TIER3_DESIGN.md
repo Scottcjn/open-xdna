@@ -160,6 +160,17 @@ work that is a BAD fit for GPU/CPU and a GOOD fit for AIE, ranked by leverage ×
    rules / tetranary logic / small tree-search — the branchy integer work GPUs hate. Ties to
    the symbolic-neural-bridge. Most novel, least certain (AIE is dataflow, not a CPU farm).
 
+### P0 RESULTS (2026-06-23) — collapse primitive PROVEN on the NPU
+- **ReLU collapse (keep-strong / prune-weak) PASS on XDNA1** via `ml/eltwise_unary -o relu`
+  (bf16, 65536 elems, `@iron.jit` + `transform_parallel`). This is the elementwise
+  non-bijunctive collapse primitive (`pse-vcipher-collapse`) executing on gen-1 silicon.
+- IRON ships the rest of the top-k path as prebuilt NPU kernels: `reduce_max`/`compute_max`
+  (peak for the cutoff) + `threshold` (keep top fraction, drop rest) + `softmax` (attention
+  scores). Repro: `cd programming_examples/ml/eltwise_unary && python3 eltwise_unary.py -o relu`
+  (run as root or render-group, with PATH incl /usr/lib/llvm-20/bin for llvm-objcopy).
+- **Remaining (the net-win proof):** compose `reduce_max → threshold` into a top-k collapse,
+  then measure NPU-prune (6.6W) + smaller-iGPU-matmul vs full-iGPU-matmul on wall-clock+joules.
+
 ### Revised first experiment (replaces dense-FFN M1)
 **P0 — NPU top-k/prune kernel:** implement a selective top-k collapse on the NPU via IRON,
 measure (a) does it run on AIE, (b) prune ratio achievable, (c) does *NPU-prune + smaller
