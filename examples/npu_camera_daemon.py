@@ -36,6 +36,8 @@ def main():
     ap.add_argument("-W", "--width", type=int, default=1280)
     ap.add_argument("-H", "--height", type=int, default=720)
     ap.add_argument("--frames", type=int, default=120)
+    ap.add_argument("--loopback", default=None, help="v4l2loopback device to output to, e.g. /dev/video10")
+    ap.add_argument("--stream-frames", type=int, default=0, help="frames to stream (0 = until Ctrl-C)")
     ap.add_argument("--out", default="/home/scott/open-xdna/examples/cam_sample")
     opts = ap.parse_args()
     W, H = opts.width, opts.height
@@ -59,6 +61,27 @@ def main():
     npu_effect(f, W, H, in_t, b_t, out_t)
     cv2.imwrite(opts.out + "_before.png", f)
     cv2.imwrite(opts.out + "_after.png", npu_effect(f, W, H, in_t, b_t, out_t))
+
+    # Stream mode: capture -> NPU effect -> v4l2loopback virtual cam (so Zoom/OBS/browser see it)
+    if opts.loopback:
+        import pyvirtualcam
+        nf = opts.stream_frames
+        print(f"  streaming NPU-effected frames -> {opts.loopback}"
+              + (f" for {nf} frames" if nf else " (Ctrl-C to stop)"))
+        i = 0
+        with pyvirtualcam.Camera(width=W, height=H, fps=30, device=opts.loopback,
+                                 fmt=pyvirtualcam.PixelFormat.RGB) as vcam:
+            while nf == 0 or i < nf:
+                ok, f = cap.read()
+                if not ok: break
+                if f.shape[1] != W or f.shape[0] != H: f = cv2.resize(f, (W, H))
+                out_bgr = npu_effect(f, W, H, in_t, b_t, out_t)
+                vcam.send(cv2.cvtColor(out_bgr, cv2.COLOR_BGR2RGB))
+                vcam.sleep_until_next_frame()
+                i += 1
+        cap.release()
+        print(f"  streamed {i} frames to {opts.loopback} — select 'NPU Camera (open-xdna)' in any app.")
+        return
 
     # A) capture-only (find the camera ceiling)
     n = 0; t0 = time.perf_counter()

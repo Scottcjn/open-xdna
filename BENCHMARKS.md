@@ -125,3 +125,8 @@ NPU, **including the host DMA round-trip** (what a v4l2 daemon pays per frame), 
 30fps frame budget at ~6.6 W. Foundation for an open-source Linux NPU webcam-effects daemon
 (the Windows-Studio-Effects gap). First effect = conv filter/stylize (proven); background-blur
 segmentation is the next milestone (needs a seg model on the NPU).
+
+**Daemon status (`npu_camera_daemon.py`):** working end-to-end — live `/dev/video0` capture → NPU
+effect → **v4l2loopback virtual cam** (`/dev/video10`, "NPU Camera (open-xdna)"), selectable in any
+app. Measured: NPU effect adds ~2 ms/frame; end-to-end is camera-capture-bound (~15 FPS on this USB
+webcam), never NPU-bound.
