@@ -33,9 +33,9 @@ import glob
 import json
 import os
 import re
+import shlex
 import sys
 import time
-from pathlib import Path
 
 DEBUGFS_ACCEL = "/sys/kernel/debug/accel"
 RAPL_ROOT = "/sys/class/powercap"
@@ -125,6 +125,17 @@ def main() -> int:
     ap.add_argument("--warmup", type=float, default=4.0, help="idle baseline seconds before --mark-cmd")
     args = ap.parse_args()
 
+    if args.hz <= 0:
+        print("--hz must be > 0", file=sys.stderr)
+        return 2
+    if args.duration < 0 or args.warmup < 0:
+        print("--duration and --warmup must be >= 0", file=sys.stderr)
+        return 2
+    mark_argv = shlex.split(args.mark_cmd) if args.mark_cmd else None
+    if args.mark_cmd and not mark_argv:
+        print("--mark-cmd is empty after parsing", file=sys.stderr)
+        return 2
+
     if os.geteuid() != 0:
         print("npu_powerlog needs root (debugfs + RAPL are root-only)", file=sys.stderr)
         return 2
@@ -170,16 +181,15 @@ def main() -> int:
     prev_e, prev_t = read_energy(domains), time.monotonic()
     time.sleep(interval)
 
-    proc = None
-    if args.mark_cmd:
+    if mark_argv:
         # idle baseline
         t_end = time.monotonic() + args.warmup
         while time.monotonic() < t_end:
             prev_e, prev_t = sample(prev_e, prev_t, "idle")
             time.sleep(interval)
-        # launch workload, mark its window
+        # launch workload (argv form, no shell), mark its window
         import subprocess
-        proc = subprocess.Popen(args.mark_cmd, shell=True)
+        proc = subprocess.Popen(mark_argv)
         while proc.poll() is None:
             prev_e, prev_t = sample(prev_e, prev_t, "workload")
             time.sleep(interval)
