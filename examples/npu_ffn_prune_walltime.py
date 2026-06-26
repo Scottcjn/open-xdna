@@ -22,7 +22,6 @@
 # Run (root or render-group, IRON env active):
 #   python3 examples/npu_ffn_prune_walltime.py
 
-import filecmp
 import os, shutil, time
 import numpy as np
 from ml_dtypes import bfloat16
@@ -38,9 +37,9 @@ REPS = 7  # median of REPS timed runs per cell
 _KDIR = os.path.dirname(str(_default_source_path("relu.cc")))
 _DST = os.path.join(_KDIR, "collapse_rt.cc")
 _SRC = os.path.join(os.path.dirname(__file__), "kernels", "collapse_rt.cc")
-# Refresh the kernel into the IRON source dir if missing or stale (avoid building
-# an out-of-date kernel from a previous example's copy).
-if os.path.exists(_SRC) and (not os.path.exists(_DST) or not filecmp.cmp(_SRC, _DST, shallow=False)):
+# Copy the kernel into the IRON source dir if absent (matches the sibling
+# examples' convention; all of them ship the same examples/kernels/collapse_rt.cc).
+if os.path.exists(_SRC) and not os.path.exists(_DST):
     shutil.copy(_SRC, _DST)
 
 
@@ -109,9 +108,12 @@ def main():
             Wdk = np.ascontiguousarray(Wd[kept, :])          # gather survivor weight rows
             return actk @ Wdk                                # shrunk down_proj
 
-        t_prune = median_ms(prune_path)
         kept = np.where(npu_keep(importance, tau))[0]
-        kn = max(1, len(kept))
+        if len(kept) == 0:
+            print(f"  {p:>4}%   (0 survivors at this threshold — skipped)")
+            continue
+        t_prune = median_ms(prune_path)
+        kn = len(kept)
         y_p = np.ascontiguousarray(act[:, kept]) @ np.ascontiguousarray(Wd[kept, :])
         cos = float((y_full * y_p).sum() / (np.linalg.norm(y_full) * np.linalg.norm(y_p) + 1e-9))
         down_speedup = t_down_full / t_prune                 # full prune path vs dense down_proj
