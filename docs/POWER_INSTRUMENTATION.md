@@ -52,6 +52,9 @@ sudo python3 examples/npu_powerlog.py --hz 5 --warmup 4 \
 sudo python3 examples/npu_powerlog.py --hz 5 --duration 30 --out run.jsonl
 ```
 
+`--mark-cmd` is parsed as argv (`shlex.split`, no shell): shell features (pipes,
+`&&`, `$VAR`, redirects, globs) are not supported — wrap them in a script.
+
 Each JSONL row: `t`, `mark` (idle/workload), `dpm_level`, `npuclk_mhz`,
 `hclk_mhz`, `powerstate`, `power_w{package-0, core, rest}`. A summary
 (idle vs workload means + deltas) prints to stderr at the end.

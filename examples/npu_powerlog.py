@@ -31,6 +31,7 @@
 import argparse
 import glob
 import json
+import math
 import os
 import re
 import shlex
@@ -121,12 +122,15 @@ def main() -> int:
     ap.add_argument("--duration", type=float, default=30.0, help="seconds (ignored if --mark-cmd)")
     ap.add_argument("--out", type=str, default=None, help="JSONL output path (default stdout)")
     ap.add_argument("--mark-cmd", type=str, default=None,
-                    help="run this command mid-capture and mark its window")
+                    help="run this command mid-capture and mark its window. Parsed as "
+                         "argv (shlex.split, no shell): shell features like pipes, &&, "
+                         "$VAR, redirects, and globs are NOT supported. Wrap them in a "
+                         "script if you need them.")
     ap.add_argument("--warmup", type=float, default=4.0, help="idle baseline seconds before --mark-cmd")
     args = ap.parse_args()
 
-    if args.hz <= 0:
-        print("--hz must be > 0", file=sys.stderr)
+    if not math.isfinite(args.hz) or args.hz <= 0:
+        print("--hz must be a finite value > 0", file=sys.stderr)
         return 2
     if args.duration < 0 or args.warmup < 0:
         print("--duration and --warmup must be >= 0", file=sys.stderr)
